@@ -1,6 +1,9 @@
-import os
-import sys
+import polars as pl
 
-tst_dict = {
-    "a": 1,
-}
+
+class Skim:
+    def __init__(self, df: pl.DataFrame) -> None:
+        self.df = df
+
+    def describe_print(self):
+        print(self.df.describe())
