@@ -9,6 +9,7 @@ packages = [{include = "skimpy_ext"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 polars = "0.17.15"
+rich = "13.3.5"
 
 
 [tool.poetry.group.dev.dependencies]
