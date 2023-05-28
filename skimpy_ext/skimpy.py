@@ -13,9 +13,6 @@ class Skim:
         self.header_style = header_style
         self.console = Console()
 
-    def describe_print(self):
-        print(self.df.describe())
-
     def skim(self):
         """Skim a data frame and return statistics.
 
@@ -45,40 +42,13 @@ class Skim:
         >>> skim(df)
         """
 
-        # check if the dataframe has a name
-        # i don't see why this is necessary
-        #           if hasattr(df_in, "name") and "name" not in df_in.columns:
-        #               name = df_in.name
-        #           else:
-        #               name = "dataframe"
-        #
         # Make a copy so as not to mess with dataframe
         df = self.df.clone()
 
-        # Perform inference of datatypes
-        # I thinks that doesn't need infer type for polars
-        #         df = _infer_datatypes(df)
-
-        # Data summary
-        tab_1_data = {"Number of rows": df.shape[0], "Number of columns": df.shape[1]}
-        dat_sum_table = Table(
-            title="Data Summary", show_header=True, header_style=self.header_style
-        )
-        dat_sum_table.add_column("dataframe")
-        dat_sum_table.add_column("Values")
-        for key, val in tab_1_data.items():
-            dat_sum_table.add_row(key, str(val))
-
-        #        # Data tpes
-        types_sum_table = Table(
-            title="Data Types", show_header=True, header_style=self.header_style
-        )
-        tab_2_data = Counter(df.dtypes)
-
-        types_sum_table.add_column("Column Type")
-        types_sum_table.add_column("Count")
-        for key, val in tab_2_data.items():
-            types_sum_table.add_row(str(key), str(val))
+        # Create table of "Data summary"
+        data_summary_table = self._data_summary_table(df)
+        data_type_table = self._data_types_table(df)
+        groupe_type_table = self._group_types_table(df)
 
         #        # Categorys
         #        if "category" in df.dtypes.astype(str).to_list():
@@ -111,14 +81,112 @@ class Skim:
         #                )
         #        # Put all of the info together
         grid = Table.grid(expand=True)
-        tables_list = [dat_sum_table, types_sum_table]
+        tables_list = [data_summary_table, data_type_table, groupe_type_table]
         #         if "category" in df.dtypes.astype(str).to_list():
         #            tables_list.append(cat_sum_table)
         grid.add_row(Columns(tables_list))
-        print(tab_1_data, tab_2_data)
         #        grid.add_column(justify="left")
         #        for sum_tab in list_of_tabs:
         #            grid.add_row(sum_tab)
         # Weirdly, iteration over list of tabs misses last entry
         #        grid.add_row(list_of_tabs[-1])
         self.console.print(Panel(grid, title="Running Polars Papaaa!", subtitle="End"))
+
+    def _data_summary_table(self, df):
+        tab_data = {"Number of rows": df.shape[0], "Number of columns": df.shape[1]}
+        data_summary_table = Table(
+            title="Data Summary", show_header=True, header_style=self.header_style
+        )
+        data_summary_table.add_column("dataframe")
+        data_summary_table.add_column("Values")
+        for key, val in tab_data.items():
+            data_summary_table.add_row(key, str(val))
+
+        return data_summary_table
+
+    def _data_types_table(self, df):
+        # Create table of "Data types"
+        data_type_table = Table(
+            title="Data Types", show_header=True, header_style=self.header_style
+        )
+        tab_data = Counter(df.dtypes)
+
+        data_type_table.add_column("Data Type")
+        data_type_table.add_column("Count")
+        for key, val in tab_data.items():
+            data_type_table.add_row(str(key), str(val))
+
+        return data_type_table
+
+    def _group_types_table(self, df):
+        # Create table of "Group type"
+        group_type_table = Table(
+            title="Group Data Type", show_header=True, header_style=self.header_style
+        )
+        tab_data = Counter(df.dtypes)
+
+        group_types = []
+        for key, val in tab_data.items():
+            if (
+                str(key).startswith("Int")
+                or str(key).startswith("UInt")
+                or str(key).startswith("Float")
+            ):
+                key = "Numeric"
+            elif (
+                str(key).startswith("Date")
+                or str(key).startswith("Time")
+                or str(key).startswith("Durat")
+            ):
+                key = "Temporal"
+            elif str(key).startswith("Utf8"):
+                key = "String"
+            elif str(key).startswith("Bool"):
+                key = "Boolean"
+            elif str(key).startswith("Categor"):
+                key = "Categorical"
+            group_types.append(key)
+
+        tab_data = Counter(group_types)
+
+        group_type_table.add_column("Group Data Type")
+        group_type_table.add_column("Count")
+        for key, val in tab_data.items():
+            group_type_table.add_row(str(key), str(val))
+
+        return group_type_table
+
+    def _numeric_variable_summary_table(self, df):
+        """Summarise numeric variables.
+
+        Summarise numeric variables. This is a helper function for skim.
+        """
+        ...
+
+    def _category_variable_summary_table(self, df):
+        """Summarise category variables.
+
+        Summarise category variables. This is a helper function for skim.
+        """
+        ...
+
+    def _datetime_variable_summary_table(self, df):
+        """Summarise datetime variables.
+
+        Summarise datetime variables. This is a helper function for skim.
+        """
+        ...
+
+    def _string_variable_summary_table(self, df):
+        """Summarise string variables.
+
+        Summarise string variables. This is a helper function for skim.
+        """
+        ...
+
+    def _bool_variable_summary_table(self, df):
+        """Summarise boolean variables.
+
+        Summarise boolean variables. This is a helper function for skim.
+        """
+        ...
