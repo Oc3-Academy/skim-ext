@@ -12,6 +12,11 @@ class Skim:
         self.df = df
         self.header_style = header_style
         self.console = Console()
+        self.numeric_columns = []
+        self.categorical_columns = []
+        self.temporal_columns = []
+        self.string_columns = []
+        self.bool_columns = []
 
     def skim(self):
         """Skim a data frame and return statistics.
@@ -49,6 +54,7 @@ class Skim:
         data_summary_table = self._data_summary_table(df)
         data_type_table = self._data_types_table(df)
         groupe_type_table = self._group_types_table(df)
+        numeric_type_table = self._numeric_variable_summary_table(df)
 
         #        # Categorys
         #        if "category" in df.dtypes.astype(str).to_list():
@@ -81,10 +87,16 @@ class Skim:
         #                )
         #        # Put all of the info together
         grid = Table.grid(expand=True)
-        tables_list = [data_summary_table, data_type_table, groupe_type_table]
+        general_info_table = [
+            data_summary_table,
+            data_type_table,
+            groupe_type_table,
+        ]
+        stats_table = [numeric_type_table]
         #         if "category" in df.dtypes.astype(str).to_list():
         #            tables_list.append(cat_sum_table)
-        grid.add_row(Columns(tables_list))
+        grid.add_row(Columns(general_info_table))
+        grid.add_row(Columns(stats_table))
         #        grid.add_column(justify="left")
         #        for sum_tab in list_of_tabs:
         #            grid.add_row(sum_tab)
@@ -123,28 +135,35 @@ class Skim:
         group_type_table = Table(
             title="Group Data Type", show_header=True, header_style=self.header_style
         )
-        tab_data = Counter(df.dtypes)
-
+        dtype_data = df.dtypes
+        columns = df.columns
         group_types = []
-        for key, val in tab_data.items():
+        for col, dtype_ in zip(columns, dtype_data):
             if (
-                str(key).startswith("Int")
-                or str(key).startswith("UInt")
-                or str(key).startswith("Float")
+                str(dtype_).startswith("Int")
+                or str(dtype_).startswith("UInt")
+                or str(dtype_).startswith("Float")
             ):
                 key = "Numeric"
+                self.numeric_columns.append(col)
             elif (
-                str(key).startswith("Date")
-                or str(key).startswith("Time")
-                or str(key).startswith("Durat")
+                str(dtype_).startswith("Date")
+                or str(dtype_).startswith("Time")
+                or str(dtype_).startswith("Durat")
             ):
                 key = "Temporal"
-            elif str(key).startswith("Utf8"):
+                self.temporal_columns.append(col)
+            elif str(dtype_).startswith("Utf8"):
                 key = "String"
-            elif str(key).startswith("Bool"):
+                self.string_columns.append(col)
+            elif str(dtype_).startswith("Bool"):
                 key = "Boolean"
-            elif str(key).startswith("Categor"):
+                self.bool_columns.append(col)
+            elif str(dtype_).startswith("Categor"):
                 key = "Categorical"
+                self.categorical_columns.append(col)
+            else:
+                key = "Other"
             group_types.append(key)
 
         tab_data = Counter(group_types)
@@ -161,7 +180,62 @@ class Skim:
 
         Summarise numeric variables. This is a helper function for skim.
         """
-        ...
+        df_describe = (
+            df.select([pl.col(column) for column in self.numeric_columns])
+            .describe(percentiles=(0.0, 0.1, 0.25, 0.5, 0.75, 0.99, 1.0))
+            .transpose(include_header=True)
+        )
+
+        # the first row after the transposing is the column names
+        df_describe.columns = df_describe.row(0)
+        df_transposed = df_describe[1:]
+
+        final_df_formatted = df_transposed.with_columns(
+            [
+                pl.all().exclude("describe").cast(pl.Float64, strict=False).round(2),
+            ]
+        )
+
+        numeric_type_table = Table(
+            title="Numeric Stats", show_header=True, header_style=self.header_style
+        )
+
+        numeric_type_table.add_column("Columns")
+        numeric_type_table.add_column("Count")
+        numeric_type_table.add_column("Null Count")
+        numeric_type_table.add_column("Mean")
+        numeric_type_table.add_column("Std")
+        numeric_type_table.add_column("Min")
+        numeric_type_table.add_column("Max")
+        numeric_type_table.add_column("Median")
+        numeric_type_table.add_column("Pct 0%")
+        numeric_type_table.add_column("Pct 10%")
+        numeric_type_table.add_column("Pct 25%")
+        numeric_type_table.add_column("Pct 50%")
+        numeric_type_table.add_column("Pct 75%")
+        numeric_type_table.add_column("Pct 99%")
+        numeric_type_table.add_column("Pct 100%")
+
+        for row in final_df_formatted.rows():
+            numeric_type_table.add_row(
+                str(row[0]),
+                str(row[1]),
+                str(row[2]),
+                str(row[3]),
+                str(row[4]),
+                str(row[5]),
+                str(row[6]),
+                str(row[7]),
+                str(row[8]),
+                str(row[9]),
+                str(row[10]),
+                str(row[11]),
+                str(row[12]),
+                str(row[13]),
+                str(row[14]),
+            )
+
+        return numeric_type_table
 
     def _category_variable_summary_table(self, df):
         """Summarise category variables.
