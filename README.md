@@ -11,8 +11,8 @@ Think of it as a super-charged version of `df.describe()`.
 
 # MVP TODOs
 
-- [ ] Info tables
-- [ ] Support for numerical data
+- [x] Info tables
+- [x] Support for numerical data
 - [ ] Support for categorical data
 - [ ] Support for timeseries data
 - [ ] Support for boolean data
