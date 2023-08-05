@@ -1,10 +1,24 @@
 from collections import Counter
 
 import polars as pl
+import numpy as np
 from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
+HIST_BINS = 6
+UNICODE_HIST = {
+    0: " ",
+    1 / 8: "▁",
+    1 / 4: "▂",
+    3 / 8: "▃",
+    1 / 2: "▄",
+    5 / 8: "▅",
+    3 / 4: "▆",
+    7 / 8: "▇",
+    1: "█",
+}
 
 
 class Skim:
@@ -215,6 +229,7 @@ class Skim:
         numeric_type_table.add_column("Pct 75%")
         numeric_type_table.add_column("Pct 99%")
         numeric_type_table.add_column("Pct 100%")
+        numeric_type_table.add_column("Hist")
 
         for row in final_df_formatted.rows():
             numeric_type_table.add_row(
@@ -233,9 +248,39 @@ class Skim:
                 str(row[12]),
                 str(row[13]),
                 str(row[14]),
+                self._create_unicode_hist(df, str(row[0])),
             )
 
         return numeric_type_table
+
+    def _create_unicode_hist(self, df: pl.DataFrame, column: str) -> str:
+        """Create unicode histogram.
+
+        Create unicode histogram. This is a helper function for skim.
+        """
+        series = df.select(pl.col(column)).to_numpy()
+        hist, _ = np.histogram(series, density=True, bins=HIST_BINS)
+        hist = hist / hist.max()
+        # now do value counts
+        key_vector = np.array(list(UNICODE_HIST.keys()), dtype="float")
+        ucode_to_print = "".join(
+            [UNICODE_HIST[self._find_nearest(key_vector, val)] for val in hist]
+        )
+        return ucode_to_print
+
+    def _find_nearest(self, array, value: float | int):
+        """Find the nearest numerical match to value in an array.
+
+        Args:
+            array (np.ndarray): An array of numbers to match with.
+            value (float): Single value to find an entry in array that is close.
+
+        Returns:
+            np.array: The entry in array that is closest to value.
+        """
+        array = np.asarray(array)
+        idx = (np.abs(array - value)).argmin()
+        return array[idx]
 
     def _category_variable_summary_table(self, df):
         """Summarise category variables.
